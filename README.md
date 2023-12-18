@@ -47,18 +47,18 @@ MESASolarLikeEmulator
 Inputs
 ------
 f_evol: Fractional evolutionary phase.
-mass: Stellar mass (solMass).
+mass (solMass): Stellar mass.
 a_MLT: Mixing length parameter.
 initial_Y: Initial stellar helium mass fraction.
 initial_Z: Initial stellar heavy element mass fraction.
 
 Outputs
 -------
-log_age: Logarithm of stellar age in Gyr (dex).
-Teff: Stellar effective temperature (K).
-radius: Stellar radius (solRad).
-delta_nu: Asteroseismic large frequency separation (uHz).
-surface_M_H: Surface metallicity (dex).
+log_age (dex): Logarithm of stellar age in Gyr.
+Teff (K): Stellar effective temperature.
+radius (solRad): Stellar radius.
+delta_nu (uHz): Asteroseismic large frequency separation.
+surface_M_H (dex): Surface metallicity.
 ```
 
 ### Evaluating the Emulator
