@@ -21,25 +21,16 @@ class Emulator(object):
         self._outputs = outputs
         self._summary = self._make_summary()
 
-    def _format_unit(self, unit: u.Unit) -> str:
-        unit = unit.to_string()
-        return f' ({unit})' if unit != '' else ''
-
     def _make_summary(self) -> str:
         name = self.__class__.__name__
         summary = (
             f'{name}\n'
             + '='*len(name)
             + '\n\nInputs\n------\n'
+            + '\n'.join([f'{i}.' for i in self.inputs])
+            + '\n\nOutputs\n-------\n'
+            + '\n'.join([f'{o}.' for o in self.outputs])
         )
-        for i in self.inputs:
-            summary += f'{i.name}: {i.desc}{self._format_unit(i.unit)}.\n'
-        
-        summary += '\nOutputs\n-------\n'
-
-        for o in self.outputs:
-            summary += f'{o.name}: {o.desc}{self._format_unit(o.unit)}.\n'
-        
         return summary
 
     @property

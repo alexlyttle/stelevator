@@ -16,5 +16,13 @@ class Parameter(object):
         self.symbol = r'\mathrm{' + name + '}' if symbol is None else symbol
         self.desc = name if desc is None else desc
 
+    def _format_unit(self) -> str:
+        unit = self.unit.to_string()
+        return f' ({unit})' if unit != '' else ''
+
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.name}', symbol='{self.symbol}', unit='{self.unit.to_string()}', desc='{self.desc}')"
+
+    def __str__(self):
+        unit = self._format_unit()
+        return f'{self.name}{unit}: {self.desc}'
