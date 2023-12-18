@@ -4,12 +4,7 @@ import pandas as pd
 from warnings import warn
 from numpy.typing import ArrayLike
 from collections import namedtuple
-from .parameters import (
-    ParameterList, Log10, Surface, Initial,
-    f_evol, mass, helium, metals, a_mlt,
-    age, radius, teff, delta_nu, m_h,
-)
-from .constraints import ConstraintList, real, interval
+from .parameters import Parameter
 from .utils import _DATADIR
 from .nn import elu
 
@@ -25,12 +20,9 @@ class Emulator(object):
         outputs (ParameterList): Output parameters for emulator.
         domain (ConstraintList, optional): List of constraints to apply to inputs. Defaults to None (real).
     """
-    def __init__(self, inputs: ParameterList, outputs: ParameterList, domain: ConstraintList=None):
+    def __init__(self, inputs: list[Parameter], outputs: list[Parameter]):
         self._inputs = inputs
         self._outputs = outputs
-        if domain is None:
-            domain = ConstraintList([real for _ in inputs])
-        self._domain = domain
 
         # TODO: make 'in units of' optional
         name = self.__class__.__name__
@@ -38,22 +30,18 @@ class Emulator(object):
             f'{name}\n'
             + '='*len(name)
             + '\n\nInputs\n------\n'
-            + '\n'.join(f'{i.name} ∈ {d}: {i.desc} in units of {i.unit.to_string()}.' for i, d in zip(self.inputs, self.domain))
+            + '\n'.join(f'{i.name}: {i.desc} in units of {i.unit.to_string()}.' for i in self.inputs)
             + '\n\nOutputs\n-------\n'
             + '\n'.join(f'{o.name}: {o.desc} in units of {o.unit.to_string()}.' for o in self.outputs)
         )
 
     @property
-    def inputs(self) -> ParameterList:
+    def inputs(self) -> list[Parameter]:
         return self._inputs
 
     @property
-    def outputs(self) -> ParameterList:
+    def outputs(self) -> list[Parameter]:
         return self._outputs
-
-    @property
-    def domain(self) -> ConstraintList:
-        return self._domain
 
     @property
     def summary(self) -> str:
@@ -91,9 +79,6 @@ class Emulator(object):
         index = pd.MultiIndex.from_arrays(X.T, names=[i.name for i in self.inputs])
         return pd.DataFrame(y, index=index, columns=[o.name for o in self.outputs])
 
-    def in_domain(self, x: np.ndarray) -> np.ndarray:
-        return np.all([d(x[..., i]) for i, d in enumerate(self.domain)], axis=0)
-
     def error(self, x: np.ndarray) -> np.ndarray:
         """Return estimate of the error at a given input. This is the truth minus the model output.
 
@@ -106,8 +91,7 @@ class Emulator(object):
         raise NotImplementedError(f"Error for '{self.__class__.__name__}' is not yet implemented.") 
 
     def validate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        y[~self.in_domain(x)] = np.nan
-        return y
+        raise NotImplementedError(f"Validation for '{self.__class__.__name__}' is not yet implemented.")
 
     def __call__(self, x: ArrayLike) -> ArrayLike:
         """Returns the model output for the given input.
@@ -130,28 +114,21 @@ class MESASolarLikeEmulator(Emulator):
     """Emulator for the MESA solar-like oscillator model from Lyttle et al. (2021)."""
     _filename = os.path.join(_DATADIR, 'lyttle21.weights.h5')
     def __init__(self):
-        inputs = ParameterList([
-            f_evol,
-            mass,
-            a_mlt,
-            Initial(helium),
-            Initial(metals),
-        ])
-        outputs = ParameterList([
-            Log10(age),
-            teff,
-            radius,
-            delta_nu,
-            Surface(m_h)
-        ])
-        domain = ConstraintList([
-            interval(0.01, 2.0),
-            interval(0.8, 1.2),
-            interval(1.5, 2.5),
-            interval(0.22, 0.32),
-            interval(0.005, 0.04),
-        ])
-        super().__init__(inputs, outputs, domain=domain)
+        inputs = [
+            Parameter('f_evol', 'f_\\mathrm{evol}', desc='Fractional evolutionary phase'),
+            Parameter('mass', 'M', 'Msun', desc='Stellar mass'),
+            Parameter('a_MLT', r'\alpha_\mathrm{MLT}', desc='Mixing length parameter'),
+            Parameter('initial_Y', 'Y_\\mathrm{init}', desc='Stellar helium mass fraction'),
+            Parameter('initial_Z', 'Z_\\mathrm{init}', desc='Stellar heavy element mass fraction'),
+        ]
+        outputs = [
+            Parameter('log_age', '\\log_{10}(t)', 'Gyr', desc='Stellar age'),
+            Parameter('Teff', 'T_\\mathrm{eff}', 'K', desc='Stellar effective temperature'),
+            Parameter('radius', 'R', 'Rsun', desc='Stellar radius'),
+            Parameter('delta_nu', r'\Delta\nu', 'uHz', desc='Asteroseismic large frequency separation'),
+            Parameter('surface_M_H', r'[\mathrm{M}/\mathrm{H}]_\mathrm{surf}', 'dex', desc='Metallicity')
+        ]
+        super().__init__(inputs, outputs)
         
         self.loc = namedtuple('Loc', ['inputs', 'outputs'])(
             np.array([0.865, 1.0, 1.9, 0.28, 0.017]),
