@@ -1,6 +1,4 @@
-import numpy as np
 import astropy.units as u
-from .utils import _ListSameType
 
 
 class Parameter(object):
