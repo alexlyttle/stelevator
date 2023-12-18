@@ -46,19 +46,19 @@ MESASolarLikeEmulator
 
 Inputs
 ------
-f_evol ∈ [0.01, 2.0): Fractional evolutionary phase in units of .
-mass ∈ [0.8, 1.2): Stellar mass in units of solMass.
-a_MLT ∈ [1.5, 2.5): Mixing length parameter in units of .
-Y_init ∈ [0.22, 0.32): Initial stellar helium mass fraction in units of .
-Z_init ∈ [0.005, 0.04): Initial stellar heavy element mass fraction in units of .
+f_evol: Fractional evolutionary phase.
+mass: Stellar mass (solMass).
+a_MLT: Mixing length parameter.
+initial_Y: Initial stellar helium mass fraction.
+initial_Z: Initial stellar heavy element mass fraction.
 
 Outputs
 -------
-log_age: Base-10 logarithm of stellar age in units of dex(Gyr).
-Teff: Stellar effective temperature in units of K.
-radius: Stellar radius in units of solRad.
-delta_nu: Asteroseismic large frequency separation in units of uHz.
-M_H_surf: Surface metallicity in units of dex.
+log_age: Logarithm of stellar age in Gyr (dex).
+Teff: Stellar effective temperature (K).
+radius: Stellar radius (solRad).
+delta_nu: Asteroseismic large frequency separation (uHz).
+surface_M_H: Surface metallicity (dex).
 ```
 
 ### Evaluating the Emulator
@@ -101,8 +101,8 @@ grid = em.grid(
     f_evol=np.arange(0.01, 2.0, 0.1),
     mass=np.arange(0.8, 1.2, 0.1),
     a_MLT=[1.9, 2.1],
-    Y_init=0.28,
-    Z_init=0.02,
+    initial_Y=0.28,
+    initial_Z=0.02,
 )
 print(grid)
 ```
