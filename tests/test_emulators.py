@@ -8,12 +8,9 @@ class TestEmulator:
     inputs = []
     outputs = []
     summary = (
-          'Emulator\n'
-        + '========\n\n'
-        + 'Inputs\n'
-        + '------\n\n'
-        + 'Outputs\n'
-        + '-------\n'
+          'Emulator\n========'
+        + '\n\nInputs\n------\n'
+        + '\n\nOutputs\n-------\n'
     )
 
     def test_init(self):
