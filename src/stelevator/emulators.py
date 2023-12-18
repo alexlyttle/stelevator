@@ -1,39 +1,46 @@
 import os, h5py
 import numpy as np
 import pandas as pd
+import astropy.units as u
 from warnings import warn
 from numpy.typing import ArrayLike
 from collections import namedtuple
 from .parameters import Parameter
 from .utils import _DATADIR
-from .nn import elu
 
 
 class Emulator(object):
     """Base class for emulators.
-
-    TODO: give emulator an input domain with constraints that can be applied 
-    to inputs in __call__.
     
     Args:
         inputs (ParameterList): Input parameters for emulator.
         outputs (ParameterList): Output parameters for emulator.
-        domain (ConstraintList, optional): List of constraints to apply to inputs. Defaults to None (real).
     """
     def __init__(self, inputs: list[Parameter], outputs: list[Parameter]):
         self._inputs = inputs
         self._outputs = outputs
+        self._summary = self._make_summary()
 
-        # TODO: make 'in units of' optional
+    def _format_unit(self, unit: u.Unit) -> str:
+        unit = unit.to_string()
+        return f' ({unit})' if unit != '' else ''
+
+    def _make_summary(self) -> str:
         name = self.__class__.__name__
-        self._summary = (
+        summary = (
             f'{name}\n'
             + '='*len(name)
             + '\n\nInputs\n------\n'
-            + '\n'.join(f'{i.name}: {i.desc} in units of {i.unit.to_string()}.' for i in self.inputs)
-            + '\n\nOutputs\n-------\n'
-            + '\n'.join(f'{o.name}: {o.desc} in units of {o.unit.to_string()}.' for o in self.outputs)
         )
+        for i in self.inputs:
+            summary += f'{i.name}: {i.desc}{self._format_unit(i.unit)}.\n'
+        
+        summary += '\nOutputs\n-------\n'
+
+        for o in self.outputs:
+            summary += f'{o.name}: {o.desc}{self._format_unit(o.unit)}.\n'
+        
+        return summary
 
     @property
     def inputs(self) -> list[Parameter]:
@@ -108,26 +115,30 @@ class Emulator(object):
         if x.shape[-1] != len(self.inputs):
             raise ValueError(f"Input must have {len(self.inputs)} dimensions.")
         mask = self.validate(x)
-        return np.where(mask, self.model(x), np.nan)
+        y = self.model(x)
+        y[~mask] = np.nan
+        return y
 
 
 class MESASolarLikeEmulator(Emulator):
     """Emulator for the MESA solar-like oscillator model from Lyttle et al. (2021)."""
-    _filename = os.path.join(_DATADIR, 'lyttle21.weights.h5')
+
+    _filename = 'lyttle21.weights.h5'
+
     def __init__(self):
         inputs = [
             Parameter('f_evol', 'f_\\mathrm{evol}', desc='Fractional evolutionary phase'),
             Parameter('mass', 'M', 'Msun', desc='Stellar mass'),
             Parameter('a_MLT', r'\alpha_\mathrm{MLT}', desc='Mixing length parameter'),
-            Parameter('initial_Y', 'Y_\\mathrm{init}', desc='Stellar helium mass fraction'),
-            Parameter('initial_Z', 'Z_\\mathrm{init}', desc='Stellar heavy element mass fraction'),
+            Parameter('initial_Y', 'Y_\\mathrm{init}', desc='Initial stellar helium mass fraction'),
+            Parameter('initial_Z', 'Z_\\mathrm{init}', desc='Initial stellar heavy element mass fraction'),
         ]
         outputs = [
-            Parameter('log_age', '\\log_{10}(t)', 'Gyr', desc='Stellar age'),
+            Parameter('log_age', '\\log_{10}(t)', 'dex', desc='Logarithm of stellar age in Gyr'),
             Parameter('Teff', 'T_\\mathrm{eff}', 'K', desc='Stellar effective temperature'),
             Parameter('radius', 'R', 'Rsun', desc='Stellar radius'),
             Parameter('delta_nu', r'\Delta\nu', 'uHz', desc='Asteroseismic large frequency separation'),
-            Parameter('surface_M_H', r'[\mathrm{M}/\mathrm{H}]_\mathrm{surf}', 'dex', desc='Metallicity')
+            Parameter('surface_M_H', r'[\mathrm{M}/\mathrm{H}]_\mathrm{surf}', 'dex', desc='Surface metallicity')
         ]
         super().__init__(inputs, outputs)
 
@@ -151,7 +162,8 @@ class MESASolarLikeEmulator(Emulator):
         Returns:
             tuple: Tuple of lists containing the weights and biases for each layer.
         """
-        with h5py.File(self._filename, 'r') as file:
+        filename = os.path.join(_DATADIR, self._filename)
+        with h5py.File(filename, 'r') as file:
             weights = [file['dense']['dense']['kernel:0'][()]]
             bias = [file['dense']['dense']['bias:0'][()]]
             for i in range(1, 7):
