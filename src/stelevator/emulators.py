@@ -90,7 +90,7 @@ class Emulator(object):
         """
         raise NotImplementedError(f"Error for '{self.__class__.__name__}' is not yet implemented.") 
 
-    def validate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def validate(self, x: np.ndarray) -> bool:
         raise NotImplementedError(f"Validation for '{self.__class__.__name__}' is not yet implemented.")
 
     def __call__(self, x: ArrayLike) -> ArrayLike:
@@ -107,7 +107,8 @@ class Emulator(object):
         x = np.asarray(x)
         if x.shape[-1] != len(self.inputs):
             raise ValueError(f"Input must have {len(self.inputs)} dimensions.")
-        return self.validate(x, self.model(x))
+        mask = self.validate(x)
+        return np.where(mask, self.model(x), np.nan)
 
 
 class MESASolarLikeEmulator(Emulator):
@@ -129,14 +130,18 @@ class MESASolarLikeEmulator(Emulator):
             Parameter('surface_M_H', r'[\mathrm{M}/\mathrm{H}]_\mathrm{surf}', 'dex', desc='Metallicity')
         ]
         super().__init__(inputs, outputs)
-        
-        self.loc = namedtuple('Loc', ['inputs', 'outputs'])(
+
+        self.loc = (
             np.array([0.865, 1.0, 1.9, 0.28, 0.017]),
             np.array([0.79, 5566.772, 1.224, 100.72, 0.081])
         )
-        self.scale = namedtuple('Scale', ['inputs', 'outputs'])(
+        self.scale = (
             np.array([0.651, 0.118, 0.338, 0.028, 0.011]),
             np.array([0.467, 601.172, 0.503, 42.582, 0.361])
+        )
+        self.bounds = (
+            np.array([0.01, 0.8, 1.5, 0.22, 0.005]),
+            np.array([2.0, 1.2, 2.5, 0.32, 0.04])
         )
         self.weights, self.bias = self._load_weights()
 
@@ -154,12 +159,21 @@ class MESASolarLikeEmulator(Emulator):
                 bias.append(file[f'dense_{i}'][f'dense_{i}']['bias:0'][()])
         return weights, bias
 
+    def validate(self, x: np.ndarray) -> bool:
+        """Validates the input against the domain of the emulator.
+        
+        Returns:
+            bool: True if all inputs are in the domain, False otherwise.
+        """
+        return np.all((x > self.bounds[0]) & (x < self.bounds[1]), axis=-1)
+
     def model(self, x):
-        x = (x - self.loc.inputs) / self.scale.inputs
+        x = (x - self.loc[0]) / self.scale[0]
         for w, b in zip(self.weights[:-1], self.bias[:-1]):
-            x = elu(np.dot(x, w) + b)
+            x = np.dot(x, w) + b
+            x = np.where(x >= 0, x, (np.exp(x) - 1))
         x = np.dot(x, self.weights[-1]) + self.bias[-1]
-        return self.loc.outputs + self.scale.outputs * x
+        return self.loc[1] + self.scale[1] * x
 
 
 class MESADeltaScutiEmulator(Emulator):
