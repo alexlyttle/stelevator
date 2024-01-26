@@ -176,6 +176,26 @@ class MESASolarLikeEmulator(Emulator):
                 bias.append(file[f'dense_{i}'][f'dense_{i}']['bias:0'][()])
         return weights, bias
 
+    def error(self, x: np.ndarray) -> tuple:
+        """Returns an approximation of the neural network error distribution.
+         
+        The error distribution for this emulator is approximated as a Gaussian
+        centered on the median error with a standard deviation equal to the
+        median absolute deviation of the error.
+
+        TODO: get values for log(age) and radius, currently returns nan
+
+        Args:
+            x (np.ndarray): Input to the model.
+        
+        Returns:
+            tuple: Tuple of arrays containing the mean and standard deviation of the error.
+        """
+        ones = np.ones(x.shape[:-1])[:, None]
+        loc = np.array([np.nan, 0.07, np.nan, 0.00022, 0.0001]) * ones
+        scale = np.array([np.nan, 0.941, np.nan, 0.06341, 0.00035]) * ones
+        return loc, scale
+
     def validate(self, x: np.ndarray) -> bool:
         """Validates the input against the domain of the emulator.
         
