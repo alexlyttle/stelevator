@@ -181,7 +181,7 @@ class MESASolarLikeEmulator(Emulator):
         Returns:
             bool: True if all inputs are in the domain, False otherwise.
         """
-        return np.all((x > self.bounds[0]) & (x < self.bounds[1]), axis=-1)
+        return np.all((x >= self.bounds[0]) & (x <= self.bounds[1]), axis=-1)
 
     def model(self, x):
         x = (x - self.loc[0]) / self.scale[0]
