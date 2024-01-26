@@ -107,12 +107,22 @@ class Emulator(object):
             raise ValueError(f"Input must have {len(self.inputs)} dimensions.")
         mask = self.validate(x)
         y = self.model(x)
+        # TODO: alternatively, warn or raise error if any inputs are outside the domain
         y[~mask] = np.nan
         return y
 
 
 class MESASolarLikeEmulator(Emulator):
-    """Emulator for the MESA solar-like oscillator model from Lyttle et al. (2021)."""
+    """Emulator for the MESA solar-like oscillator model from Lyttle et al. (2021).
+    
+    This emulator was trained on data in the range:
+    
+    0.01 <= f_evol < 2.00
+    0.8 <= M/Msun < 1.2
+    1.5 <= alpha_MLT < 2.5
+    0.22 <= Y < 0.32
+    0.005 <= Z < 0.04
+    """
 
     _filename = 'lyttle21.weights.h5'
 
