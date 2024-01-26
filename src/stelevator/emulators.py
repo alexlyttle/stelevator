@@ -67,15 +67,18 @@ class Emulator(object):
         Returns:
             pd.DataFrame: Table with grid inputs as the index and outputs as the columns.
         """
-        xi = [np.atleast_1d(inputs.pop(i.name)) for i in self.inputs]
+        dimensions = [np.atleast_1d(inputs.pop(i.name)) for i in self.inputs]
         if len(inputs) > 0:
             warn(f"Unknown keyword arguments have been ignored: {', '.join(inputs.keys())}.")
-        coords = np.stack(np.meshgrid(*xi, indexing='ij'), axis=-1)
-        X = np.reshape(coords, (np.prod(coords.shape[:-1]), coords.shape[-1]))
-        y = self(X)
+        
+        input_names = [i.name for i in self.inputs]
+        index = pd.MultiIndex.from_product(dimensions, names=input_names)
 
-        index = pd.MultiIndex.from_arrays(X.T, names=[i.name for i in self.inputs])
-        return pd.DataFrame(y, index=index, columns=[o.name for o in self.outputs])
+        output_names = [o.name for o in self.outputs]
+        df = pd.DataFrame(index=index, columns=output_names).reset_index()
+        
+        df[output_names] = self(df[input_names])
+        return df.set_index(input_names)
 
     def error(self, x: np.ndarray) -> np.ndarray:
         """Return estimate of the error at a given input. This is the truth minus the model output.
