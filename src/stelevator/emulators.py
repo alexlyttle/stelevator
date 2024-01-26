@@ -67,7 +67,8 @@ class Emulator(object):
         Returns:
             pd.DataFrame: Table with grid inputs as the index and outputs as the columns.
         """
-        dimensions = [np.atleast_1d(inputs.pop(i.name)) for i in self.inputs]
+        dimensions = [np.atleast_1d(inputs.pop(i.name)).ravel() for i in self.inputs]
+
         if len(inputs) > 0:
             warn(f"Unknown keyword arguments have been ignored: {', '.join(inputs.keys())}.")
         
